@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="6aae5806-cdf3-4410-b931-e267429e8f2d" />
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="43f9df29-2ba1-4363-a2fc-5ea0ca1a2686" >
+		<email:smtp-connection host="localhost" />
+	</email:smtp-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="818862ef-b8a0-45c3-8888-e86f7f593f2d" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="CheckLeadsFlow" doc:id="a67022b1-e38b-4343-9835-f38c5a570923" >
+		<http:listener doc:name="Listener" doc:id="962710f4-2c74-4389-af45-0d97f9d73a05" config-ref="HTTP_Listener_config" path="/check"/>
+		<choice doc:name="Choice" doc:id="41507153-f006-466f-b7f7-3c4c129222f1" >
+			<when expression='#[payload != null]'>
+				<logger level="INFO" doc:name="Logger" doc:id="b8555bd5-d59b-47a9-bcb3-f2f7e89b4ee0" message="Leads found"/>
+				<os:store doc:name="Store" doc:id="c49ca2a4-e980-4320-833b-e185ecc0bafa" key="timeKey" objectStore="Object_store">
+					<os:value ><![CDATA[#[now()]]]></os:value>
+				</os:store>
+			</when>
+			<otherwise >
+				<os:retrieve doc:name="Retrieve" doc:id="b883a394-1305-4e12-8670-d287eded1424" key="timeKey" target="oldTime">
+					<os:default-value ><![CDATA[#[null]]]></os:default-value>
+				</os:retrieve>
+				<choice doc:name="Choice" doc:id="8832d7c2-fb71-4169-bc4c-f53eeb1648f3" >
+					<when expression='#[payload != "0"]'>
+						<choice doc:name="Choice" doc:id="452c831e-bbb3-4be6-97c9-d4a9777e56aa" >
+							<when expression="#[now() - vars.oldTime &gt;= 4]">
+								<file:write doc:name="Write" doc:id="8ca30228-2624-4dcb-a0fa-ec305e016943" path="C:/LeadsNotification/alert.json"/>
+
+							</when>
+							<otherwise >
+								<logger level="INFO" doc:name="Logger" doc:id="cc259374-68e0-4cb6-86bd-26d20f43fc3b" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise >
+						<os:store doc:name="Store" doc:id="c7b169c2-797f-4411-9b0b-143f8a65f40f" key="timeKey">
+							<os:value ><![CDATA[#[now()]]]></os:value>
+						</os:store>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
